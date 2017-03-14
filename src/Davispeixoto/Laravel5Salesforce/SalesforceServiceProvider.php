@@ -1,7 +1,7 @@
 <?php namespace Davispeixoto\Laravel5Salesforce;
 
+use Illuminate\Foundation\AliasLoader;
 use Illuminate\Support\ServiceProvider;
-use Davispeixoto\ForceDotComToolkitForPhp\SforceEnterpriseClient as Client;
 
 /**
  * Class SalesforceServiceProvider
@@ -11,17 +11,28 @@ use Davispeixoto\ForceDotComToolkitForPhp\SforceEnterpriseClient as Client;
  */
 class SalesforceServiceProvider extends ServiceProvider
 {
+
     /**
      * Indicates if loading of the provider is deferred.
      *
      * @var bool
      */
-    protected $defer = true;
+    protected $defer = false;
+
 
     /**
-     * @var
+     * Bootstrap the configuration
+     *
+     * @return void
      */
-    protected $sfh;
+    public function boot()
+    {
+        $config = __DIR__ . '/config/config.php';
+        $this->mergeConfigFrom($config, 'salesforce');
+        $this->publishes([$config => config_path('salesforce.php')]);
+
+    }
+
 
     /**
      * Register the service provider.
@@ -30,17 +41,17 @@ class SalesforceServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $config = __DIR__ . '/config/config.php';
-        $this->mergeConfigFrom($config, 'salesforce');
-        $this->publishes([$config => config_path('salesforce.php')]);
+        $this->app->booting(function () {
+            $loader = AliasLoader::getInstance();
+            $loader->alias('Salesforce', 'Davispeixoto\Laravel5Salesforce\SalesforceFacade');
+            $loader->alias('SF', 'Davispeixoto\Laravel5Salesforce\SalesforceFacade');
+        });
 
-        $this->app->singleton('salesforce', function ($app) {
-            $sf = new Salesforce(new Client());
-            $sf->connect($app['config']);
-
-            return $sf;
+        $this->app['salesforce'] = $this->app->share(function ($app) {
+            return new Salesforce($app['config']);
         });
     }
+
 
     /**
      * Get the services provided by the provider.

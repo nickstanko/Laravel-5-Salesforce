@@ -2,6 +2,7 @@
 
 use Davispeixoto\ForceDotComToolkitForPhp\SforceEnterpriseClient as Client;
 use Exception;
+use Illuminate\Config\Repository;
 
 /**
  * Class Salesforce
@@ -16,50 +17,37 @@ class Salesforce
      */
     public $sfh;
 
-    /**
-     * Salesforce constructor.
-     * @param Client $sfh
-     */
-    public function __construct(Client $sfh)
+    public function __construct(Repository $configExternal)
     {
-        $this->sfh = $sfh;
-    }
-
-    /**
-     * @param $method
-     * @param $args
-     * @return mixed
-     */
-    public function __call($method, $args)
-    {
-        return call_user_func_array([$this->sfh, $method], $args);
-    }
-
-    /**
-     * Connect user into salesforce
-     *
-     * @param $configExternal
-     * @throws SalesforceException
-     */
-    public function connect($configExternal)
-    {
-        $wsdl = $configExternal->get('salesforce.wsdl');
-
-        if (empty($wsdl)) {
-            $wsdl = __DIR__ . '/Wsdl/enterprise.wsdl.xml';
-        }
-
-        $user = $configExternal->get('salesforce.username');
-        $pass = $configExternal->get('salesforce.password');
-        $token = $configExternal->get('salesforce.token');
-
         try {
+            $this->sfh = new Client();
+
+            $wsdl = $configExternal->get('salesforce.wsdl');
+
+            if (empty($wsdl)) {
+                $wsdl = __DIR__ . '/Wsdl/enterprise.wsdl.xml';
+            }
+
             $this->sfh->createConnection($wsdl);
+
+            $user = $configExternal->get('salesforce.username');
+            $pass = $configExternal->get('salesforce.password');
+            $token = $configExternal->get('salesforce.token');
+
             $this->sfh->login($user, $pass . $token);
         } catch (Exception $e) {
-            throw new SalesforceException('Exception at Constructor' . $e->getMessage() . "\n\n" . $e->getTraceAsString());
+            throw new Exception('Exception at Constructor' . $e->getMessage() . "\n\n" . $e->getTraceAsString());
         }
     }
+
+    public function __call($method, $args)
+    {
+        return call_user_func_array(array($this->sfh, $method), $args);
+    }
+
+    /*
+     * Debugging functions
+     */
 
     /**
      * @return mixed
